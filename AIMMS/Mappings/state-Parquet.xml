@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<AimmsParquetMapping>
+	<RowMapping name="state">
+		<ColumnMapping name="position" binds-to="i_position" />
+		<ColumnMapping name="color" binds-to="i_color" />
+		<ColumnMapping name="initialState" maps-to="p_initialState(i_position,i_color)" />
+		<ColumnMapping name="solutionState" maps-to="p_solutionState(i_position,i_color)" />
+	</RowMapping>
+</AimmsParquetMapping>

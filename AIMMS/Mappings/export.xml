@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<AimmsCSVMapping dense-children="1">
+	<RowMapping name="submission">
+		<ColumnMapping name="id" binds-to="i_id" />
+		<ColumnMapping name="moves" max-string-size="1000000" maps-to="sp_moves(i_id)" />
+	</RowMapping>
+</AimmsCSVMapping>

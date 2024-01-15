@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<TemplateManager>
+	<Page Name="All Data Pages" PageGUID="1765A1C5-B8C0-4D7F-8308-266756B0D745" />
+	<Page Name="[Data Page] p_initialState" PageGUID="F63F55C5-5EC0-4275-8D95-26621F34B4CF" />
+	<Page Name="[Data Page] p_solutionState" PageGUID="A4179605-4975-4FB4-A698-B0EAB8EBA681" />
+	<Page Name="[Data Page] v_state" PageGUID="5AB7F593-B458-4F3B-8156-ADB3EC2ED9C3" Marked="true" />
+	<Page Name="[Data Page] p_c_movementBalance" PageGUID="FB43EF44-E239-4744-9209-2E29D69D7090" Marked="true" />
+</TemplateManager>

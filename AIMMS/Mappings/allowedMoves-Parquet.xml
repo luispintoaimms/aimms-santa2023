@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<AimmsParquetMapping>
+	<RowMapping name="allowedMoves">
+		<ColumnMapping name="move" binds-to="i_move" />
+		<ColumnMapping name="position" binds-to="i_position" />
+		<ColumnMapping name="allowedMoves" maps-to="ep_moves(i_move,i_position)" />
+	</RowMapping>
+</AimmsParquetMapping>

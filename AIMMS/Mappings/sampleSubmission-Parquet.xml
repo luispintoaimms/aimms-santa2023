@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<AimmsParquetMapping>
+	<RowMapping name="submission">
+		<ColumnMapping name="movement" binds-to="i_movement" />
+		<ColumnMapping name="sampleSubmission" maps-to="ep_sampleSubmission(i_movement)" />
+	</RowMapping>
+</AimmsParquetMapping>

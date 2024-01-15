@@ -1,0 +1,670 @@
+## ams_version=1.0
+
+Model Main_AIMMS {
+	Section Import {
+		Set s_id {
+			Parameter: ep_id;
+		}
+		Index i_id {
+			Range: s_id;
+		}
+		Set s_puzzleTypes {
+			Parameter: ep_puzzleType;
+		}
+		Index i_puzzleType {
+			Range: s_puzzleTypes;
+		}
+		ElementParameter ep_puzzleTypeOfID {
+			IndexDomain: i_id;
+			Range: s_puzzleTypes;
+		}
+		StringParameter sp_solutionState {
+			IndexDomain: i_id;
+		}
+		StringParameter sp_initialState {
+			IndexDomain: i_id;
+		}
+		Parameter p_numWildCards {
+			IndexDomain: i_id;
+		}
+		StringParameter sp_allowedMoves {
+			IndexDomain: i_puzzleType;
+		}
+		StringParameter sp_sampleSubmission {
+			IndexDomain: i_id;
+		}
+		Procedure pr_readPuzzles {
+			Body: {
+				_sp_importFileName := "../Download/puzzles.csv"; ! Kaggle provided puzzles file
+				_sp_importRead := FileRead(_f_importFile);
+				_p_numerOfLines := StringOccurrences(_sp_importRead, "\n");
+				repeat "LineLoopcount"
+				    _p_endLine :=  FindNthString(_sp_importRead, "\n", loopcount("LineLoopcount"));
+				    _sp_lineRead :=  SubString(_sp_importRead,_p_startLine, _p_endLine-1) + ",";
+				    _p_startLine := _p_endLine + 1;
+				    if loopcount("LineLoopcount") > _p_numerOfLines then
+				        break;
+				    elseif _sp_lineRead = "id,puzzle_type,solution_state,initial_state,num_wildcards," then !header
+				        skip;
+				    else
+				        _p_numberOfCommas := StringOccurrences(_sp_lineRead, ",");
+				        _p_startComma := 0;
+				        repeat "CommaLoopcount"
+				            _p_endComma :=  FindNthString(_sp_lineRead, ",", loopcount("CommaLoopcount"));
+				            _sp_readComma :=  SubString(_sp_lineRead,_p_startComma, _p_endComma-1);
+				            _p_startComma := _p_endComma + 1;
+				            if loopcount("CommaLoopcount") = 1 then !ID
+				                SetElementAdd(s_id, ep_id, _sp_readComma);
+				            elseif loopcount("CommaLoopcount") = 2 then !Puzzle Type
+				                SetElementAdd(s_puzzleTypes, ep_puzzleType, _sp_readComma);
+				                ep_puzzleTypeOfID(ep_id) := ep_puzzleType;
+				            elseif loopcount("CommaLoopcount") = 3 then !Solution State
+				                sp_solutionState(ep_id) := _sp_readComma;
+				            elseif loopcount("CommaLoopcount") = 4 then !Initial State
+				                sp_initialState(ep_id) := _sp_readComma;
+				            elseif loopcount("CommaLoopcount") = 5 then !Wildcards
+				                p_numWildCards(ep_id) := val(_sp_readComma);
+				            endif;
+				            if loopcount("CommaLoopcount") >= _p_numberOfCommas then
+				                break;
+				            endif;
+				        endrepeat;        
+				    endif;
+				endrepeat;
+			}
+			File _f_importFile {
+				Name: _sp_importFileName;
+				Device: Disk;
+				Mode: replace;
+			}
+			StringParameter _sp_importFileName;
+			StringParameter _sp_importRead;
+			StringParameter _sp_lineRead;
+			Parameter _p_numerOfLines;
+			Parameter _p_startLine;
+			Parameter _p_endLine;
+			StringParameter _sp_readComma;
+			Parameter _p_numberOfCommas;
+			Parameter _p_startComma;
+			Parameter _p_endComma;
+		}
+		Procedure pr_readPuzzlesInfo {
+			Body: {
+				_sp_importFileName := "../Download/puzzle_info.csv"; ! Kaggle provided puzzles info file
+				_sp_readFileImport := FileRead(_f_importFile);
+				_p_numerOfLines := StringOccurrences(_sp_readFileImport, "\n");
+				_p_startLine := 0;
+				repeat "LineLoopcount"
+				    _p_endLine :=  FindNthString(_sp_readFileImport, "\n", loopcount("LineLoopcount"));
+				    _sp_lineRead :=  SubString(_sp_readFileImport,_p_startLine, _p_endLine-1);
+				    _p_startLine := _p_endLine + 1;
+				    if loopcount("LineLoopcount") > _p_numerOfLines then
+				        break;
+				    elseif _sp_lineRead = "puzzle_type,allowed_moves" then !header
+				        skip;
+				    else !only two elements in file
+				        _p_startComma := 0;
+				        _p_endComma :=  FindNthString(_sp_lineRead, ",", 1);
+				        _sp_readComma :=  SubString(_sp_lineRead,_p_startComma, _p_endComma-1);
+				        SetElementAdd(s_puzzleTypes, ep_puzzleType, _sp_readComma);
+				        _p_startComma := _p_endComma + 1;
+				        _p_endComma :=  StringLength(_sp_lineRead);
+				        _sp_readComma :=  SubString(_sp_lineRead,_p_startComma, _p_endComma-1);
+				        sp_allowedMoves(ep_puzzleType) := _sp_readComma;
+				    endif;
+				endrepeat;
+			}
+			File _f_importFile {
+				Name: _sp_importFileName;
+				Device: Disk;
+				Mode: replace;
+			}
+			StringParameter _sp_importFileName;
+			StringParameter _sp_readFileImport;
+			StringParameter _sp_lineRead;
+			Parameter _p_numerOfLines;
+			Parameter _p_startLine;
+			Parameter _p_endLine;
+			StringParameter _sp_readComma;
+			Parameter _p_numberOfCommas;
+			Parameter _p_startComma;
+			Parameter _p_endComma;
+		}
+		Procedure pr_readSampleSubmission {
+			Body: {
+				_sp_importFileName := "../Download/sample_submission.csv"; ! Kaggle provided puzzles info file
+				_sp_readFileImport := FileRead(_f_importFile);
+				_p_numerOfLines := StringOccurrences(_sp_readFileImport, "\n");
+				_p_startLine := 0;
+				repeat "LineLoopcount"
+				    _p_endLine :=  FindNthString(_sp_readFileImport, "\n", loopcount("LineLoopcount"));
+				    _sp_lineRead :=  SubString(_sp_readFileImport,_p_startLine, _p_endLine-1);
+				    _p_startLine := _p_endLine + 1;
+				    if loopcount("LineLoopcount") > _p_numerOfLines then
+				        break;
+				    elseif _sp_lineRead = "id,moves" then !header
+				        skip;
+				    else !only two elements in file
+				        _p_startComma := 0;
+				        _p_endComma :=  FindNthString(_sp_lineRead, ",", 1);
+				        _sp_readComma :=  SubString(_sp_lineRead,_p_startComma, _p_endComma-1);
+				        SetElementAdd(s_id, ep_id, _sp_readComma);
+				        _p_startComma := _p_endComma + 1;
+				        _p_endComma :=  StringLength(_sp_lineRead);
+				        _sp_readComma :=  SubString(_sp_lineRead,_p_startComma, _p_endComma);
+				        sp_sampleSubmission(ep_id) := _sp_readComma;
+				    endif;
+				endrepeat;
+			}
+			File _f_importFile {
+				Name: _sp_importFileName;
+				Device: Disk;
+				Mode: replace;
+			}
+			StringParameter _sp_importFileName;
+			StringParameter _sp_readFileImport;
+			StringParameter _sp_lineRead;
+			Parameter _p_numerOfLines;
+			Parameter _p_startLine;
+			Parameter _p_endLine;
+			StringParameter _sp_readComma;
+			Parameter _p_numberOfCommas;
+			Parameter _p_startComma;
+			Parameter _p_endComma;
+		}
+		Procedure pr_importAllFIles {
+			Body: {
+				pr_readPuzzles;
+				pr_readPuzzlesInfo;
+				pr_readSampleSubmission;
+			}
+		}
+	}
+	Section Export {
+		StringParameter sp_moves {
+			IndexDomain: i_id;
+		}
+		Procedure pr_addCurrentSolution {
+			Body: {
+				sp_moves(ep_runID) 
+				:=  sum((i_movement,i_move) | i_move <> 'none' and p_solutionMove(i_movement,i_move), i_move + ".") - ".";
+			}
+		}
+		Procedure pr_exportSubmissionFile {
+			Body: {
+				dex::AddMapping("export","Mappings/export.xml");
+				dex::WriteToFile("export/submission.csv","export");
+			}
+			StringParameter _sp_fileExportName;
+			File _f_export {
+				Name: _sp_fileExportName;
+				Device: Disk;
+				Mode: replace;
+			}
+		}
+	}
+	Section Data_Model {
+		DeclarationSection Allowed_movement_data {
+			Set s_allowedMoveMoves {
+				Index: i_allowedMoveMove;
+				Parameter: ep_allowedMoveMove;
+			}
+			Set s_allowedMovePositions {
+				SubsetOf: Integers;
+				Index: i_allowedMovePosition;
+				Parameter: ep_allowedMovePosition, ep_allowedMovePosition2;
+				Property: ElementsAreNumerical;
+			}
+			ElementParameter ep_allowedMoveByPuzzleType {
+				IndexDomain: (i_puzzleType,i_allowedMoveMove,i_allowedMovePosition);
+				Range: s_allowedMovePositions;
+			}
+		}
+		DeclarationSection Position_and_Color_data {
+			ElementParameter ep_runID {
+				Range: s_id;
+			}
+			Set s_colors {
+				Index: i_color;
+				Parameter: ep_color;
+				InitialData: data{A,B,C,D,E,F};
+			}
+			Set s_positions {
+				SubsetOf: Integers;
+				Index: i_position, i_positionAux;
+				Parameter: ep_position;
+				Property: ElementsAreNumerical;
+				InitialData: {
+					{0..23}
+				}
+			}
+			Set s_moves {
+				Index: i_move;
+				Parameter: ep_move;
+				InitialData: {
+					{'f0','-f0','f1','-f1','r0','-r0','r1','-r1','d0','-d0','d1','-d1','none'}
+				}
+			}
+			Parameter p_initialState {
+				IndexDomain: (i_position,i_color);
+				Range: binary;
+				InitialData: {
+					  data 
+					{ ( 0 , D ) : 1,  ( 1 , E ) : 1,  ( 2 , C ) : 1,  ( 3 , B ) : 1,  ( 4 , B ) : 1,  ( 5 , E ) : 1,  ( 6 , F ) : 1,
+					  ( 7 , A ) : 1,  ( 8 , F ) : 1,  ( 9 , D ) : 1,  ( 10, B ) : 1,  ( 11, F ) : 1,  ( 12, F ) : 1,  ( 13, E ) : 1,
+					  ( 14, B ) : 1,  ( 15, D ) : 1,  ( 16, A ) : 1,  ( 17, A ) : 1,  ( 18, C ) : 1,  ( 19, D ) : 1,  ( 20, C ) : 1,
+					  ( 21, E ) : 1,  ( 22, A ) : 1,  ( 23, C ) : 1 }
+				}
+				Comment: {
+					"data 
+					{ ( 0 , D ) : 1,  ( 1 , E ) : 1,  ( 2 , D ) : 1,  ( 3 , A ) : 1,  ( 4 , E ) : 1,  ( 5 , B ) : 1,  ( 6 , A ) : 1,
+					  ( 7 , B ) : 1,  ( 8 , C ) : 1,  ( 9 , A ) : 1,  ( 10, C ) : 1,  ( 11, A ) : 1,  ( 12, D ) : 1,  ( 13, C ) : 1,
+					  ( 14, D ) : 1,  ( 15, F ) : 1,  ( 16, F ) : 1,  ( 17, F ) : 1,  ( 18, E ) : 1,  ( 19, E ) : 1,  ( 20, B ) : 1,
+					  ( 21, F ) : 1,  ( 22, B ) : 1,  ( 23, C ) : 1 }"
+				}
+				dex::ColumnName: initialState;
+				dex::Dataset: import;
+				dex::TableName: state;
+			}
+			Parameter p_solutionState {
+				IndexDomain: (i_position,i_color);
+				Range: binary;
+				Comment: {
+					"data 
+					{ ( 0 , A ) : 1,  ( 1 , A ) : 1,  ( 2 , A ) : 1,  ( 3 , A ) : 1,  ( 4 , B ) : 1,  ( 5 , B ) : 1,  ( 6 , B ) : 1,
+					  ( 7 , B ) : 1,  ( 8 , C ) : 1,  ( 9 , C ) : 1,  ( 10, C ) : 1,  ( 11, C ) : 1,  ( 12, D ) : 1,  ( 13, D ) : 1,
+					  ( 14, D ) : 1,  ( 15, D ) : 1,  ( 16, E ) : 1,  ( 17, E ) : 1,  ( 18, E ) : 1,  ( 19, E ) : 1,  ( 20, F ) : 1,
+					  ( 21, F ) : 1,  ( 22, F ) : 1,  ( 23, F ) : 1 }"
+				}
+				dex::ColumnName: solutionState;
+				dex::Dataset: import;
+				dex::TableName: state;
+			}
+			ElementParameter ep_moves {
+				IndexDomain: (i_move,i_position);
+				Range: s_positions;
+				Comment: {
+					"data 
+					{ ( f0   , 0  ) : 0 ,  ( f0   , 1  ) : 1 ,  ( f0   , 2  ) : 19,  ( f0   , 3  ) : 17,  ( f0   , 4  ) : 6 ,  ( f0   , 5  ) : 4 ,
+					  ( f0   , 6  ) : 7 ,  ( f0   , 7  ) : 5 ,  ( f0   , 8  ) : 2 ,  ( f0   , 9  ) : 9 ,  ( f0   , 10 ) : 3 ,  ( f0   , 11 ) : 11,
+					  ( f0   , 12 ) : 12,  ( f0   , 13 ) : 13,  ( f0   , 14 ) : 14,  ( f0   , 15 ) : 15,  ( f0   , 16 ) : 16,  ( f0   , 17 ) : 20,
+					  ( f0   , 18 ) : 18,  ( f0   , 19 ) : 21,  ( f0   , 20 ) : 10,  ( f0   , 21 ) : 8 ,  ( f0   , 22 ) : 22,  ( f0   , 23 ) : 23,
+					  ( \'-f0\', 0  ) : 0 ,  ( \'-f0\', 1  ) : 1 ,  ( \'-f0\', 2  ) : 8 ,  ( \'-f0\', 3  ) : 10,  ( \'-f0\', 4  ) : 5 ,  ( \'-f0\', 5  ) : 7 ,
+					  ( \'-f0\', 6  ) : 4 ,  ( \'-f0\', 7  ) : 6 ,  ( \'-f0\', 8  ) : 21,  ( \'-f0\', 9  ) : 9 ,  ( \'-f0\', 10 ) : 20,  ( \'-f0\', 11 ) : 11,
+					  ( \'-f0\', 12 ) : 12,  ( \'-f0\', 13 ) : 13,  ( \'-f0\', 14 ) : 14,  ( \'-f0\', 15 ) : 15,  ( \'-f0\', 16 ) : 16,  ( \'-f0\', 17 ) : 3 ,
+					  ( \'-f0\', 18 ) : 18,  ( \'-f0\', 19 ) : 2 ,  ( \'-f0\', 20 ) : 17,  ( \'-f0\', 21 ) : 19,  ( \'-f0\', 22 ) : 22,  ( \'-f0\', 23 ) : 23,
+					  ( f1   , 0  ) : 18,  ( f1   , 1  ) : 16,  ( f1   , 2  ) : 2 ,  ( f1   , 3  ) : 3 ,  ( f1   , 4  ) : 4 ,  ( f1   , 5  ) : 5 ,
+					  ( f1   , 6  ) : 6 ,  ( f1   , 7  ) : 7 ,  ( f1   , 8  ) : 8 ,  ( f1   , 9  ) : 0 ,  ( f1   , 10 ) : 10,  ( f1   , 11 ) : 1 ,
+					  ( f1   , 12 ) : 13,  ( f1   , 13 ) : 15,  ( f1   , 14 ) : 12,  ( f1   , 15 ) : 14,  ( f1   , 16 ) : 22,  ( f1   , 17 ) : 17,
+					  ( f1   , 18 ) : 23,  ( f1   , 19 ) : 19,  ( f1   , 20 ) : 20,  ( f1   , 21 ) : 21,  ( f1   , 22 ) : 11,  ( f1   , 23 ) : 9 ,
+					  ( \'-f1\', 0  ) : 9 ,  ( \'-f1\', 1  ) : 11,  ( \'-f1\', 2  ) : 2 ,  ( \'-f1\', 3  ) : 3 ,  ( \'-f1\', 4  ) : 4 ,  ( \'-f1\', 5  ) : 5 ,
+					  ( \'-f1\', 6  ) : 6 ,  ( \'-f1\', 7  ) : 7 ,  ( \'-f1\', 8  ) : 8 ,  ( \'-f1\', 9  ) : 23,  ( \'-f1\', 10 ) : 10,  ( \'-f1\', 11 ) : 22,
+					  ( \'-f1\', 12 ) : 14,  ( \'-f1\', 13 ) : 12,  ( \'-f1\', 14 ) : 15,  ( \'-f1\', 15 ) : 13,  ( \'-f1\', 16 ) : 1 ,  ( \'-f1\', 17 ) : 17,
+					  ( \'-f1\', 18 ) : 0 ,  ( \'-f1\', 19 ) : 19,  ( \'-f1\', 20 ) : 20,  ( \'-f1\', 21 ) : 21,  ( \'-f1\', 22 ) : 16,  ( \'-f1\', 23 ) : 18,
+					  ( r0   , 0  ) : 0 ,  ( r0   , 1  ) : 5 ,  ( r0   , 2  ) : 2 ,  ( r0   , 3  ) : 7 ,  ( r0   , 4  ) : 4 ,  ( r0   , 5  ) : 21,
+					  ( r0   , 6  ) : 6 ,  ( r0   , 7  ) : 23,  ( r0   , 8  ) : 10,  ( r0   , 9  ) : 8 ,  ( r0   , 10 ) : 11,  ( r0   , 11 ) : 9 ,
+					  ( r0   , 12 ) : 3 ,  ( r0   , 13 ) : 13,  ( r0   , 14 ) : 1 ,  ( r0   , 15 ) : 15,  ( r0   , 16 ) : 16,  ( r0   , 17 ) : 17,
+					  ( r0   , 18 ) : 18,  ( r0   , 19 ) : 19,  ( r0   , 20 ) : 20,  ( r0   , 21 ) : 14,  ( r0   , 22 ) : 22,  ( r0   , 23 ) : 12,
+					  ( \'-r0\', 0  ) : 0 ,  ( \'-r0\', 1  ) : 14,  ( \'-r0\', 2  ) : 2 ,  ( \'-r0\', 3  ) : 12,  ( \'-r0\', 4  ) : 4 ,  ( \'-r0\', 5  ) : 1 ,
+					  ( \'-r0\', 6  ) : 6 ,  ( \'-r0\', 7  ) : 3 ,  ( \'-r0\', 8  ) : 9 ,  ( \'-r0\', 9  ) : 11,  ( \'-r0\', 10 ) : 8 ,  ( \'-r0\', 11 ) : 10,
+					  ( \'-r0\', 12 ) : 23,  ( \'-r0\', 13 ) : 13,  ( \'-r0\', 14 ) : 21,  ( \'-r0\', 15 ) : 15,  ( \'-r0\', 16 ) : 16,  ( \'-r0\', 17 ) : 17,
+					  ( \'-r0\', 18 ) : 18,  ( \'-r0\', 19 ) : 19,  ( \'-r0\', 20 ) : 20,  ( \'-r0\', 21 ) : 5 ,  ( \'-r0\', 22 ) : 22,  ( \'-r0\', 23 ) : 7 ,
+					  ( r1   , 0  ) : 4 ,  ( r1   , 1  ) : 1 ,  ( r1   , 2  ) : 6 ,  ( r1   , 3  ) : 3 ,  ( r1   , 4  ) : 20,  ( r1   , 5  ) : 5 ,
+					  ( r1   , 6  ) : 22,  ( r1   , 7  ) : 7 ,  ( r1   , 8  ) : 8 ,  ( r1   , 9  ) : 9 ,  ( r1   , 10 ) : 10,  ( r1   , 11 ) : 11,
+					  ( r1   , 12 ) : 12,  ( r1   , 13 ) : 2 ,  ( r1   , 14 ) : 14,  ( r1   , 15 ) : 0 ,  ( r1   , 16 ) : 17,  ( r1   , 17 ) : 19,
+					  ( r1   , 18 ) : 16,  ( r1   , 19 ) : 18,  ( r1   , 20 ) : 15,  ( r1   , 21 ) : 21,  ( r1   , 22 ) : 13,  ( r1   , 23 ) : 23,
+					  ( \'-r1\', 0  ) : 15,  ( \'-r1\', 1  ) : 1 ,  ( \'-r1\', 2  ) : 13,  ( \'-r1\', 3  ) : 3 ,  ( \'-r1\', 4  ) : 0 ,  ( \'-r1\', 5  ) : 5 ,
+					  ( \'-r1\', 6  ) : 2 ,  ( \'-r1\', 7  ) : 7 ,  ( \'-r1\', 8  ) : 8 ,  ( \'-r1\', 9  ) : 9 ,  ( \'-r1\', 10 ) : 10,  ( \'-r1\', 11 ) : 11,
+					  ( \'-r1\', 12 ) : 12,  ( \'-r1\', 13 ) : 22,  ( \'-r1\', 14 ) : 14,  ( \'-r1\', 15 ) : 20,  ( \'-r1\', 16 ) : 18,  ( \'-r1\', 17 ) : 16,
+					  ( \'-r1\', 18 ) : 19,  ( \'-r1\', 19 ) : 17,  ( \'-r1\', 20 ) : 4 ,  ( \'-r1\', 21 ) : 21,  ( \'-r1\', 22 ) : 6 ,  ( \'-r1\', 23 ) : 23,
+					  ( d0   , 0  ) : 0 ,  ( d0   , 1  ) : 1 ,  ( d0   , 2  ) : 2 ,  ( d0   , 3  ) : 3 ,  ( d0   , 4  ) : 4 ,  ( d0   , 5  ) : 5 ,
+					  ( d0   , 6  ) : 18,  ( d0   , 7  ) : 19,  ( d0   , 8  ) : 8 ,  ( d0   , 9  ) : 9 ,  ( d0   , 10 ) : 6 ,  ( d0   , 11 ) : 7 ,
+					  ( d0   , 12 ) : 12,  ( d0   , 13 ) : 13,  ( d0   , 14 ) : 10,  ( d0   , 15 ) : 11,  ( d0   , 16 ) : 16,  ( d0   , 17 ) : 17,
+					  ( d0   , 18 ) : 14,  ( d0   , 19 ) : 15,  ( d0   , 20 ) : 22,  ( d0   , 21 ) : 20,  ( d0   , 22 ) : 23,  ( d0   , 23 ) : 21,
+					  ( \'-d0\', 0  ) : 0 ,  ( \'-d0\', 1  ) : 1 ,  ( \'-d0\', 2  ) : 2 ,  ( \'-d0\', 3  ) : 3 ,  ( \'-d0\', 4  ) : 4 ,  ( \'-d0\', 5  ) : 5 ,
+					  ( \'-d0\', 6  ) : 10,  ( \'-d0\', 7  ) : 11,  ( \'-d0\', 8  ) : 8 ,  ( \'-d0\', 9  ) : 9 ,  ( \'-d0\', 10 ) : 14,  ( \'-d0\', 11 ) : 15,
+					  ( \'-d0\', 12 ) : 12,  ( \'-d0\', 13 ) : 13,  ( \'-d0\', 14 ) : 18,  ( \'-d0\', 15 ) : 19,  ( \'-d0\', 16 ) : 16,  ( \'-d0\', 17 ) : 17,
+					  ( \'-d0\', 18 ) : 6 ,  ( \'-d0\', 19 ) : 7 ,  ( \'-d0\', 20 ) : 21,  ( \'-d0\', 21 ) : 23,  ( \'-d0\', 22 ) : 20,  ( \'-d0\', 23 ) : 22,
+					  ( d1   , 0  ) : 1 ,  ( d1   , 1  ) : 3 ,  ( d1   , 2  ) : 0 ,  ( d1   , 3  ) : 2 ,  ( d1   , 4  ) : 16,  ( d1   , 5  ) : 17,
+					  ( d1   , 6  ) : 6 ,  ( d1   , 7  ) : 7 ,  ( d1   , 8  ) : 4 ,  ( d1   , 9  ) : 5 ,  ( d1   , 10 ) : 10,  ( d1   , 11 ) : 11,
+					  ( d1   , 12 ) : 8 ,  ( d1   , 13 ) : 9 ,  ( d1   , 14 ) : 14,  ( d1   , 15 ) : 15,  ( d1   , 16 ) : 12,  ( d1   , 17 ) : 13,
+					  ( d1   , 18 ) : 18,  ( d1   , 19 ) : 19,  ( d1   , 20 ) : 20,  ( d1   , 21 ) : 21,  ( d1   , 22 ) : 22,  ( d1   , 23 ) : 23,
+					  ( \'-d1\', 0  ) : 2 ,  ( \'-d1\', 1  ) : 0 ,  ( \'-d1\', 2  ) : 3 ,  ( \'-d1\', 3  ) : 1 ,  ( \'-d1\', 4  ) : 8 ,  ( \'-d1\', 5  ) : 9 ,
+					  ( \'-d1\', 6  ) : 6 ,  ( \'-d1\', 7  ) : 7 ,  ( \'-d1\', 8  ) : 12,  ( \'-d1\', 9  ) : 13,  ( \'-d1\', 10 ) : 10,  ( \'-d1\', 11 ) : 11,
+					  ( \'-d1\', 12 ) : 16,  ( \'-d1\', 13 ) : 17,  ( \'-d1\', 14 ) : 14,  ( \'-d1\', 15 ) : 15,  ( \'-d1\', 16 ) : 4 ,  ( \'-d1\', 17 ) : 5 ,
+					  ( \'-d1\', 18 ) : 18,  ( \'-d1\', 19 ) : 19,  ( \'-d1\', 20 ) : 20,  ( \'-d1\', 21 ) : 21,  ( \'-d1\', 22 ) : 22,  ( \'-d1\', 23 ) : 23,
+					  ( none , 0  ) : 0 ,  ( none , 1  ) : 1 ,  ( none , 2  ) : 2 ,  ( none , 3  ) : 3 ,  ( none , 4  ) : 4 ,  ( none , 5  ) : 5 ,
+					  ( none , 6  ) : 6 ,  ( none , 7  ) : 7 ,  ( none , 8  ) : 8 ,  ( none , 9  ) : 9 ,  ( none , 10 ) : 10,  ( none , 11 ) : 11,
+					  ( none , 12 ) : 12,  ( none , 13 ) : 13,  ( none , 14 ) : 14,  ( none , 15 ) : 15,  ( none , 16 ) : 16,  ( none , 17 ) : 17,
+					  ( none , 18 ) : 18,  ( none , 19 ) : 19,  ( none , 20 ) : 20,  ( none , 21 ) : 21,  ( none , 22 ) : 22,  ( none , 23 ) : 23 }"
+				}
+				dex::ColumnName: allowedMoves;
+				dex::Dataset: import;
+				dex::TableName: allowedMoves;
+			}
+			Set s_movements {
+				SubsetOf: Integers;
+				Index: i_movement;
+				Property: ElementsAreNumerical;
+				InitialData: {
+					{0..10}
+				}
+			}
+			ElementParameter ep_sampleSubmission {
+				IndexDomain: i_movement;
+				Range: s_moves;
+			}
+			Parameter p_availableWildcards;
+			Parameter p_solutionMove {
+				IndexDomain: (i_movement,i_move);
+			}
+		}
+	}
+	Section Processing {
+		Procedure pr_transformImportToDataModel {
+			Body: {
+				! If no ID has been selected to run, raise error.
+				if not ep_runID then
+				    raise error "No run ID selected";
+				endif;
+				
+				!Empty all data from previous ID
+				empty s_colors, s_positions, s_moves, s_movements;
+				cleandependents s_colors, s_positions, s_moves, s_movements;
+				
+				
+				! Initial state data
+				! This is done parsing the string into elements
+				_sp_initialState := sp_initialState(ep_runID) + ";";
+				_p_numberOfSemicolons := StringOccurrences(_sp_initialState, ";");
+				s_positions := {0.._p_numberOfSemicolons-1};
+				_p_semicolonStart := 0;
+				repeat "SemicolonLoopcount"
+				    _p_semicolonEnd :=  FindNthString(_sp_initialState, ";", loopcount("SemicolonLoopcount"));
+				    _sp_aux :=  SubString(_sp_initialState,_p_semicolonStart, _p_semicolonEnd-1);
+				    _p_semicolonStart := _p_semicolonEnd + 1;
+				    if loopcount("SemicolonLoopcount") > _p_numberOfSemicolons+1 then
+				        break;
+				    else
+				        SetElementAdd(s_colors,ep_color,_sp_aux);
+				        p_initialState(loopcount("SemicolonLoopcount")-1, ep_color) := 1;
+				    endif;
+				endrepeat;
+				
+				! Solution state data
+				! This is done parsing the string into elements
+				_sp_solutionState := sp_solutionState(ep_runID) + ";";
+				_p_numberOfSemicolons := StringOccurrences(_sp_solutionState, ";");
+				_p_semicolonStart := 0;
+				repeat "SemicolonLoopcount"
+				    _p_semicolonEnd :=  FindNthString(_sp_solutionState, ";", loopcount("SemicolonLoopcount"));
+				    _sp_aux :=  SubString(_sp_solutionState,_p_semicolonStart, _p_semicolonEnd-1);
+				    _p_semicolonStart := _p_semicolonEnd + 1;
+				    if loopcount("SemicolonLoopcount") > _p_numberOfSemicolons+1 then
+				        break;
+				    else
+				        SetElementAdd(s_colors,ep_color,_sp_aux);
+				        p_solutionState(loopcount("SemicolonLoopcount")-1, ep_color) := 1;
+				    endif;
+				endrepeat;
+				
+				! Allowed moves - uses separate sets
+				for i_allowedMoveMove, i_allowedMovePosition | ep_allowedMoveByPuzzleType(ep_puzzleTypeOfID(ep_runID), i_allowedMoveMove, i_allowedMovePosition) <> '' do
+				    SetElementAdd(s_moves,ep_move,i_allowedMoveMove);
+				    SetElementAdd(s_positions,ep_position,i_allowedMovePosition);
+				    ep_moves(ep_move, ep_position) := ep_allowedMoveByPuzzleType(ep_puzzleTypeOfID(ep_runID), i_allowedMoveMove, i_allowedMovePosition);
+				endfor;
+				
+				! Sample submission
+				_sp_sampleSubmission := sp_sampleSubmission(ep_runID) + ".";
+				_p_numberOfPeriods := StringOccurrences(_sp_sampleSubmission, ".");
+				s_movements := {0.._p_numberOfPeriods};
+				_p_periodStart := 0;
+				repeat "PeriodLoopcount"
+				    _p_periodEnd :=  FindNthString(_sp_sampleSubmission, ".", loopcount("PeriodLoopcount"));
+				    _sp_aux :=  SubString(_sp_sampleSubmission,_p_periodStart, _p_periodEnd-1);
+				    _p_periodStart := _p_periodEnd + 1;
+				    if loopcount("PeriodLoopcount") > _p_numberOfPeriods+1 then
+				        break;
+				    else
+				        SetElementAdd(s_moves,ep_move,_sp_aux);
+				        ep_sampleSubmission(loopcount("PeriodLoopcount")) := ep_move;
+				    endif;
+				endrepeat;
+				
+				p_availableWildcards := p_numWildCards(ep_runID);
+			}
+			StringParameter _sp_aux;
+			StringParameter _sp_aux2;
+			StringParameter _sp_initialState;
+			StringParameter _sp_solutionState;
+			StringParameter _sp_allowedMoves;
+			StringParameter _sp_sampleSubmission;
+			Parameter _p_semicolonStart;
+			Parameter _p_semicolonEnd;
+			Parameter _p_numberOfSemicolons;
+			Parameter _p_commaStart;
+			Parameter _p_commaEnd;
+			Parameter _p_numberOfCommas;
+			Parameter _p_singleQuoteStart;
+			Parameter _p_singleQuoteMid;
+			Parameter _p_singleQuoteEnd;
+			Parameter _p_numberOfSingleQuotes;
+			Parameter _p_periodStart;
+			Parameter _p_periodEnd;
+			Parameter _p_numberOfPeriods;
+		}
+		Procedure pr_transformAllowedMovesData {
+			Body: {
+				for i_puzzleType do
+				    _sp_allowedMoves := FindReplaceStrings(sp_allowedMoves(i_puzzleType) + "'", " ","");
+				    _p_numberOfSingleQuotes := StringOccurrences(_sp_allowedMoves, "'");
+				    _p_singleQuoteStart := FindNthString(_sp_allowedMoves, "'", 1);
+				
+				    repeat "SingleQuoteLoopcount"
+				        _p_singleQuoteMid :=  FindNthString(_sp_allowedMoves, "'", loopcount("SingleQuoteLoopcount")*2);
+				        _p_singleQuoteEnd :=  FindNthString(_sp_allowedMoves, "'", loopcount("SingleQuoteLoopcount")*2+1);
+				        _sp_aux :=  SubString(_sp_allowedMoves,_p_singleQuoteStart+1, _p_singleQuoteMid-1);
+				        _p_singleQuoteStart := _p_singleQuoteEnd;
+				        SetElementAdd(s_allowedMoveMoves,ep_allowedMoveMove,_sp_aux);
+				        _sp_aux  :=  SubString(_sp_allowedMoves,_p_singleQuoteMid+3, _p_singleQuoteEnd-3) + ",";
+				
+				        _p_numberOfCommas := StringOccurrences(_sp_aux, ",");
+				        _p_commaStart := 0;
+				        repeat "CommaLoopcount"
+				            _p_commaEnd := FindNthString(_sp_aux, ",", loopcount("CommaLoopcount"));
+				            _sp_aux2 :=  SubString(_sp_aux,_p_commaStart,_p_commaEnd-1);
+				            _p_commaStart := _p_commaEnd + 1;
+				            SetElementAdd(s_allowedMovePositions,ep_allowedMovePosition ,_sp_aux2);
+				            SetElementAdd(s_allowedMovePositions,ep_allowedMovePosition2 ,loopcount("CommaLoopcount")-1);            
+				            ep_allowedMoveByPuzzleType(i_puzzleType,ep_allowedMoveMove,ep_allowedMovePosition2) := ep_allowedMovePosition ;
+				            if loopcount("CommaLoopcount") > _p_numberOfCommas then
+				                break;
+				            endif;
+				        endrepeat;
+				
+				        if loopcount("SingleQuoteLoopcount") * 2 > _p_numberOfSingleQuotes then
+				            break;
+				        endif;
+				    endrepeat;
+				endfor;
+			}
+			StringParameter _sp_aux;
+			StringParameter _sp_aux2;
+			StringParameter _sp_initialState;
+			StringParameter _sp_solutionState;
+			StringParameter _sp_allowedMoves;
+			StringParameter _sp_sampleSubmission;
+			Parameter _p_semicolonStart;
+			Parameter _p_semicolonEnd;
+			Parameter _p_numberOfSemicolons;
+			Parameter _p_commaStart;
+			Parameter _p_commaEnd;
+			Parameter _p_numberOfCommas;
+			Parameter _p_singleQuoteStart;
+			Parameter _p_singleQuoteMid;
+			Parameter _p_singleQuoteEnd;
+			Parameter _p_numberOfSingleQuotes;
+			Parameter _p_periodStart;
+			Parameter _p_periodEnd;
+			Parameter _p_numberOfPeriods;
+		}
+		Procedure pr_generateOppositeMoves {
+			Body: {
+				_s_originalMoves := {i_move | i_move <> 'none' and not FindString(i_move,"-")} ;
+				
+				for _i_originalMove do
+				    SetElementAdd(s_moves,ep_move,"-" + _i_originalMove);
+				    ep_moves(ep_move, i_position)
+				    :=  first(i_positionAux | ep_moves(_i_originalMove, i_positionAux) = i_position);
+				endfor;
+			}
+			Set _s_originalMoves {
+				SubsetOf: s_moves;
+				Index: _i_originalMove;
+			}
+		}
+		Procedure pr_generateNoneMove {
+			Body: {
+				SetElementAdd(s_moves,ep_move,"none");
+				ep_moves(ep_move, i_position) := i_position;
+			}
+		}
+		Procedure pr_processingAndParquetGeneratation {
+			Body: {
+				pr_importAllFIles;
+				pr_transformAllowedMovesData;
+				for i_id do
+				    ep_runID := i_id;
+				    pr_transformImportToDataModel;
+				    pr_generateOppositeMoves;
+				    pr_generateNoneMove;
+				    pr_writeParquet;
+				endfor;
+			}
+		}
+		Procedure pr_writeParquet {
+			Body: {
+				! If no ID has been selected to run, raise error.
+				if not ep_runID then
+				    raise error "No run ID selected";
+				endif;
+				
+				if not DirectoryExists("parquet") then
+				    DirectoryCreate("parquet");
+				endif;
+				
+				dex::AddMapping("allowedMoves","Mappings/allowedMoves-Parquet.xml");
+				dex::AddMapping("state","Mappings/state-Parquet.xml");
+				dex::AddMapping("sampleSubmission","Mappings/sampleSubmission-Parquet.xml");
+				dex::AddMapping("wildcards","Mappings/wildcards-Parquet.xml");
+				
+				dex::WriteToFile("parquet/" + ep_runID + "-allowedMoves.parquet","allowedMoves");
+				dex::WriteToFile("parquet/" + ep_runID + "-state.parquet","state");
+				dex::WriteToFile("parquet/" + ep_runID + "-sampleSubmission.parquet","sampleSubmission");
+				dex::WriteToFile("parquet/" + ep_runID + "-wildcards.parquet","wildcards");
+			}
+		}
+		Procedure pr_readParquet {
+			Body: {
+				! If no ID has been selected to run, raise error.
+				if not ep_runID then
+				    raise error "No run ID selected";
+				endif;
+				
+				if not DirectoryExists("parquet") then
+				    raise error "No files parquet available";
+				endif;
+				
+				if not FileExists("parquet/" + ep_runID + "-allowedMoves.parquet") then
+				    raise error "File parquet/" + ep_runID + "-allowedMoves.parquet not found.";
+				endif;
+				if not FileExists("parquet/" + ep_runID + "-state.parquet") then
+				    raise error "File parquet/" + ep_runID + "-state.parquet not found.";
+				endif;
+				if not FileExists("parquet/" + ep_runID + "-sampleSubmission.parquet") then
+				    raise error "File parquet/" + ep_runID + "-sampleSubmission.parquet not found.";
+				endif;
+				
+				dex::AddMapping("allowedMoves","Mappings/allowedMoves-Parquet.xml");
+				dex::AddMapping("state","Mappings/state-Parquet.xml");
+				dex::AddMapping("sampleSubmission","Mappings/sampleSubmission-Parquet.xml");
+				dex::AddMapping("wildcards","Mappings/wildcards-Parquet.xml");
+				dex::ReadFromFile("parquet/" + ep_runID + "-allowedMoves.parquet","allowedMoves");
+				dex::ReadFromFile("parquet/" + ep_runID + "-state.parquet","state");
+				dex::ReadFromFile("parquet/" + ep_runID + "-sampleSubmission.parquet","sampleSubmission");
+				dex::ReadFromFile("parquet/" + ep_runID + "-wildcards.parquet","wildcards");
+			}
+		}
+	}
+	Section Initialization_and_Termination {
+		Procedure MainInitialization {
+			Comment: "Add initialization statements here that do NOT require any library being initialized already.";
+		}
+		Procedure PostMainInitialization {
+			Comment: {
+				"Add initialization statements here that require that the libraries are already initialized properly,
+				or add statements that require the Data Management module to be initialized."
+			}
+		}
+		Procedure MainExecution {
+			Body: {
+				s_id := {0..397};
+				for i_id  do
+				    !Empty all data for previous ID
+				    empty s_colors, s_positions, s_moves, s_movements;
+				    cleandependents s_colors, s_positions, s_moves, s_movements;
+				
+				    ep_runID := i_id;
+				
+				    ! read data for ID
+				    pr_readParquet;
+				    ! copy sample data to results identifier
+				    p_solutionMove(i_movement, ep_sampleSubmission(i_movement)) := 1;
+				    ! saves the solution for future export
+				    pr_addCurrentSolution;
+				endfor;
+				
+				pr_exportSubmissionFile;
+			}
+		}
+		Procedure PreMainTermination {
+			Body: {
+				return DataManagementExit();
+			}
+			Comment: {
+				"Add termination statements here that require all libraries to be still alive.
+				Return 1 if you allow the termination sequence to continue.
+				Return 0 if you want to cancel the termination sequence."
+			}
+		}
+		Procedure MainTermination {
+			Body: {
+				return 1;
+			}
+			Comment: {
+				"Add termination statements here that do not require all libraries to be still alive.
+				Return 1 to allow the termination sequence to continue.
+				Return 0 if you want to cancel the termination sequence.
+				It is recommended to only use the procedure PreMainTermination to cancel the termination sequence and let this procedure always return 1."
+			}
+		}
+	}
+	Section Quantities_and_Units {
+		Comment: {
+			"This section contains all the units and quantities that are added automatically by AIMMS.
+			It is recommended to declare all your quantities here."
+		}
+		Quantity SI_Time_Duration {
+			BaseUnit: s;
+			Conversions: minute->s : #-># * 60;
+			Comment: {
+				"Expresses the value for the duration of periods.
+				
+				The unit s has been added automatically because it is a required unit for AimmsWebUI.
+				
+				The unit minute has been added automatically because it is a required unit for AimmsWebUI."
+			}
+		}
+	}
+}

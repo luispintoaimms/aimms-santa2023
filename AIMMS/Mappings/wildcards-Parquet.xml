@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<AimmsParquetMapping>
+	<RowMapping name="wildcard">
+		<ColumnMapping name="wildcard" maps-to="p_availableWildcards" />
+	</RowMapping>
+</AimmsParquetMapping>
